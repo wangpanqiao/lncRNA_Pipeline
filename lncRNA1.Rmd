@@ -1,0 +1,226 @@
+---
+title: "Untitled"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = FALSE,
+	message = FALSE,
+	warning = FALSE,
+	cache = FALSE,
+	fig.height = 6,
+	fig.width = 8
+)
+
+local({
+  hook_plot = knitr::knit_hooks$get('plot')
+  knitr::knit_hooks$set(plot = function(x, options) {
+    x = paste(x, collapse = '.')
+    if (!grepl('\\.svg', x)) return(hook_plot(x, options))
+    # read the content of the svg image and write it out without <?xml ... ?>
+    paste(readLines(x)[-1], collapse = '\n')
+  })
+})
+
+options(DT.options = list(autoFill = TRUE, 
+                          searchHighlight = TRUE, 
+                          search = list(regex = TRUE, caseInsensitive = FALSE),
+                          dom = 'Bfrtip', 
+                          buttons = c('copy', 'csv', 'excel', 'pdf', 'print')))
+# rm(list = setdiff(ls(), "params"))
+# gc()
+# The latest plotly should be used, for a lot of bugs fixed
+# if (!require("devtools")) install.packages("devtools")
+# install.packages(c("curl", "httr"))
+# devtools::install_github('ramnathv/htmlwidgets')
+# devtools::install_github("ropensci/plotly")
+# source("https://bioconductor.org/biocLite.R")
+# biocLite("edgeR")
+# library(devtools)
+# install_github("vqv/ggbiplot")
+# require(plotly)
+# require(data.table)
+# require(cowplot)
+# require(stringr)
+# require(knitr)
+# require(edgeR)
+# require(ggbiplot)
+# require(pheatmap)
+# require(heatmaply)
+# require(ggsci)
+library(ggplot2)
+
+Sys.setlocale('LC_ALL','C')
+# type.list <- search_then_determine(path = input)
+theme_set(cowplot::theme_cowplot())
+```
+
+```{r lncRNA data preparation}
+library(data.table)
+toUpperFirstLetter <- function(x) {
+  paste0(toupper(substr(x, 1, 1)), substring(x, 2))
+}
+lncRNA <- fread("basic_charac.txt", sep="\t")
+setnames(lncRNA, c('Gene', 'Transcript', 'Type', 'Potential', 'Length', '我怎么知道这是什么东西？', 'Class'))
+lncRNA[, Type := toUpperFirstLetter(sub("_", " ", Type))]
+```
+
+Assembly
+=====================================
+
+```{r}
+cdf.percent = 10
+
+# Order first, for using geom_line later (geom_step behaves badly when calling plotly, see https://github.com/ropensci/plotly/issues/1030)
+# cdf <- cdf[order(cdf[, 1], cdf[, 2])]
+# Subset data randomly
+# lncRNA.subset <- lncRNA[sample(nrow(lncRNA),nrow(lncRNA) * params$cdf.percent / 100),]
+lncRNA.subset <- lncRNA[sample(nrow(lncRNA),nrow(lncRNA) * cdf.percent / 100),]
+```
+
+Column {.tabset}
+-------------------------------------
+
+### *CDF* against *CPAT*
+
+```{r}
+
+library(cowplot)
+require(plotly)
+# require(data.table)
+# require(cowplot)
+# require(stringr)
+# require(knitr)
+# require(edgeR)
+# require(ggbiplot)
+# require(pheatmap)
+# require(heatmaply)
+require(ggsci)
+
+theme = 'npg'
+
+p <- ggplot() +
+  geom_line(data = lncRNA.subset, aes(x = Potential, colour = Type), size = 2, stat = 'ecdf') +
+  scale_x_continuous(expand  = c(.01, 0)) + scale_y_continuous(expand = c(0, 0)) +
+  labs(x = 'Coding Probablity(CPAT)', title = "Coding Potential", y = "CDF") +
+  geom_hline(yintercept = 1, colour = "grey", linetype = "dashed", size = 1) +
+  # get(paste0('scale_color_',params$theme))()
+  get(paste0('scale_color_',theme))()
+save_plot('CDF.tiff', p, base_height = 8.5, base_width = 11, dpi = 300, compression = 'lzw')
+save_plot('CDF.pdf', p, base_height = 8.5, base_width = 11, dpi = 300)
+ggplotly(p)
+rm(p)
+invisible(gc())   ##base
+```
+
+```{r parsing GTF file}
+# Use sum of exon length as transcript length
+lncRNA.gtf <- unique(lncRNA[, Length := sum(Length), by = .(Gene, Type)], by = 'Gene')   ##base
+```
+
+### lncRNA length distribution with type
+
+```{r}
+max.lncrna.len = 10000
+min.expressed.sample = 50
+# lncRNA.gtf[Length > params$max.lncrna.len, Length := params$max.lncrna.len]
+# p <- ggplot() + geom_density(data = lncRNA.gtf, aes(x = Length, colour = Type), size = 1.5) +
+  # xlab('Transcript length') + ylab('Density') +
+  # scale_x_continuous(breaks = seq.int(200, params$max.lncrna.len, length.out = 10),
+                     # labels = c(seq.int(200, params$max.lncrna.len, length.out = 9),
+                                # paste0(params$max.lncrna.len, '+')), 
+                     # expand = c(0.01, 0)) +
+  # scale_y_continuous(expand = c(0.01, 0)) +
+  # get(paste0('scale_color_',params$theme))()
+lncRNA.gtf[Length > max.lncrna.len, Length := max.lncrna.len]
+p <- ggplot() + geom_density(data = lncRNA.gtf, aes(x = Length, colour = Type), size = 1.5) +
+  xlab('Transcript length') + ylab('Density') +
+  scale_x_continuous(breaks = seq.int(200, max.lncrna.len, length.out = 10),
+                     labels = c(seq.int(200, max.lncrna.len, length.out = 9),
+                                paste0(max.lncrna.len, '+')), 
+                     expand = c(0.01, 0)) +
+  scale_y_continuous(expand = c(0.01, 0)) +
+  get(paste0('scale_color_',theme))()
+save_plot('lncRNA_length_distribution_with_type.tiff', p, base_height = 8.5, base_width = 11, dpi = 300, compression = 'lzw')
+save_plot('lncRNA_length_distribution_with_type.pdf', p, base_height = 8.5, base_width = 11, dpi = 300)
+ggplotly(p) %>% layout(margin = list(r = 50))
+rm(p)
+invisible(gc())
+```
+
+### Total lncRNA length distribution
+
+```{r}
+# p <- ggplot() + geom_histogram(data = lncRNA.gtf, aes(x = Length), binwidth = 100) +
+  # scale_x_continuous(breaks = seq.int(200, params$max.lncrna.len, length.out = 10),
+                     # labels = c(seq.int(200, params$max.lncrna.len, length.out = 9),
+                                # paste0(params$max.lncrna.len, '+')),
+                     # expand = c(0.01, 0)) +
+p <- ggplot() + geom_histogram(data = lncRNA.gtf, aes(x = Length), binwidth = 100) +
+  scale_x_continuous(breaks = seq.int(200, max.lncrna.len, length.out = 10),
+                     labels = c(seq.int(200, max.lncrna.len, length.out = 9),
+                                paste0(max.lncrna.len, '+')),
+                     expand = c(0.01, 0)) +
+  scale_y_continuous(expand = c(0, 10)) + labs(x = 'lncRNA length', y = 'Count')
+save_plot('lncRNA_length_distribution.tiff', p, base_height = 8.5, base_width = 11, dpi = 300, compression = 'lzw')
+save_plot('lncRNA_length_distribution.pdf', p, base_height = 8.5, base_width = 11, dpi = 300)
+ggplotly(p) %>% layout(margin = list(r = 50))
+rm(p)
+invisible(gc())
+```
+
+### lncRNA classification
+
+```{r lncRNA classification}
+cls <- lncRNA[, .(count = .N), by = Class]
+colors <- c('rgb(211,94,96)', 'rgb(128,133,133)', 'rgb(144,103,167)', 'rgb(171,104,87)', 'rgb(114,147,203)')
+plot_ly(cls, labels = ~Class, values = ~count, type = 'pie',
+        textposition = 'inside',
+        textinfo = 'label+percent',
+        insidetextfont = list(color = '#FFFFFF'),
+        hoverinfo = 'text',
+        text = ~paste(Class, 'total count:', count),
+        marker = list(colors = colors,
+                      line = list(color = '#FFFFFF', width = 1)),
+                      #The 'pull' attribute can also be used to create space between the sectors
+        showlegend = FALSE) %>%
+  layout(xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+         yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+```
+
+Column
+-------------------------------------
+
+### Description
+
+**Title** Statistics of lncRNAs identified by lncPipe
+
+**What have we done**  In this section, lncRNAs (novel and known) identified by [lncPipe](https://github.com/likelet/LncPipe) are systematically summarized and compared across the two categories based on length, coding potential and classification level. In LncPipe, coding potential of final lncRNAs were re-assesed by CNCI, so CNCI CDS data were plot accordingly which coding genes were also considered; Besides, we summarized length distribution of novel and known lncRNAs and classified lncRNAs based on thier genome location to nearest protein coding genes. The following figure illustrates the classification categories.
+
+```{r echo=FALSE}
+knitr::include_graphics('Nucleotide-20170720011933.svg')
+```
+
+**What do the plots mean** As mentioned above, this section contains `CDF plot`, `length distrition plot`, `lncRNA classification plot` and `result table`. Of those :
+
+`CDF plot` represents the coding potential score of lncRNA distribution also called 'Cumulative Distribution Function' plot, which is the probability that the variable takes a value less than or equal to x. The horizontal axis is the allowable domain for the given probability function. Since the vertical axis is a probability, it must fall between zero and one. It increases from zero to one as we go from left to right on the horizontal axis.
+
+`length distrition plot` gives the length distribution of known and novel lncRNA, the X-axis is length of lncRNA sequence and Y-axis is the fraction of lncRNA at specify length. To note, not all the length numbers are plotted. While length numbers larger than `max.length` parameter are grouped together and shown as ">10000" for instance.
+
+`lncRNA classification plot` shows the fraction of different kinds of novel and known lncRNAs. Classification information was produced by LncPipe and illustrated as a pie-chart.
+
+**Reference:**
+
+1. Mao A-P, Shen J, Zuo Z. Expression and regulation of long noncoding RNAs in TLR4 signaling in mouse macrophages. BMC Genomics. 2015;16:45. 
+
+### Table
+
+###显示前20行
+```{r lncRNA table}
+DT::datatable(head(lncRNA.gtf[, -6], n = 20L))
+```
+

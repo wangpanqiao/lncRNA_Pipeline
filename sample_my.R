@@ -46,7 +46,7 @@ rownames(ac1) = colnames(datmRNA)
 M1=cor(log(datmRNA+1))
 
 mRNAp=pheatmap::pheatmap(M1,
-                   annotation_col = ac,display_numbers = matrix(ifelse(M1 > 0.92, round(M1,2), ""), nrow(M1)),
+                   annotation_col = ac1,display_numbers = matrix(ifelse(M1 > 0.92, round(M1,2), ""), nrow(M1)),
                    number_color = "blue", number_size= 2
 				   # breaks = seq(0, 100, length.out = 100)
                    ) 

@@ -9,12 +9,11 @@ args=commandArgs(T)
 # print(fileroot)
 a = read.table(args[1], header = T,sep="\t")
 
-a=a[which(a$Type=="novel"),]
+a = read.table(args[1], header = T,sep="\t")
 a$Type[which(a$Type=="novel")]="lncRNA"
-# head(a)
-# a=a[,-c(S0_1,S0_2,S0_3)]
-
 a=subset(a,select=-c(S0_1,S0_2,S0_3))
+
+lnc=a[which(a$Type=="lncRNA"),]
 
 # dat=subset(des.count, ave(rowSums(des.count[-1:-2]) > 0, Category, FUN = any))
 a1=subset(a, ave(rowSums(a[-1:-2]) > 0.3, ID, FUN = any))
@@ -34,7 +33,7 @@ p=pheatmap::pheatmap(M,
 
 
 
-mRNA=a[which(a$Type != "novel"),]
+mRNA=a[which(a$Type != "lncRNA"),]
 
 # dat=subset(des.count, ave(rowSums(des.count[-1:-2]) > 0, Category, FUN = any))
 mRNA1=subset(mRNA, ave(rowSums(mRNA[-1:-2]) > 0.3, ID, FUN = any))

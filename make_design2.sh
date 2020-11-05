@@ -1,5 +1,5 @@
 echo -e 'Sample\tgroup'
-for i in "C" "F1" "H" "S0" "S13";
+for i in "C" "F1" "H" "S0" "S14";
 do
 	for j in `seq 3`;
 		do

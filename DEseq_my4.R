@@ -8,7 +8,7 @@ require(ggsci)
 require(cowplot)
 library(ggrepel)
 
-STR=c("C","F1","H","S0","S13")
+STR=c("C","F1","H","S0","S14")
 # combn(STR,2)
 str_comb <- function(vector){
 	n <- length(vector) 

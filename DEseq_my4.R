@@ -188,4 +188,3 @@ for (i in 1:dim(mycomb)[1]){
 	write.table(coldata,paste(c(paste(c(mycomb[i,1],mycomb[i,2]),collapse="_vs_"),".group"),collapse=""),quote=F,row.names=T,col.names=T,sep="\t")
 	runDE(subcount,coldata)
 }
-

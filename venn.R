@@ -78,4 +78,3 @@ write.table(hha,"intersect.lnc.txt",row.names=F,quote=F)
 
 
 
-
